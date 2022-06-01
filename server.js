@@ -25,10 +25,14 @@ nextApp.prepare().then(async () => {
   const wss = new WebSocket.Server({ server })
 
   client.connect(function (err, _client) {
+    // fires up the listener.
     _client.query('LISTEN reservation_insert_event')
+    // in case of notification, run a function.
     _client.on('notification', (event) => {
+      // query all reservations on every insert (bad logic, but works for now).
       _client.query('SELECT * FROM reservations').then((data) => {
         console.log('event data', data)
+        // for each websocket client, send the results of the query, again, bad logic, but works for now.
         wss.clients.forEach((wsclient) => {
           if (wsclient.readyState === WebSocket.OPEN) {
             wsclient.send(JSON.stringify({ type: 'list', data: data.rows }))
