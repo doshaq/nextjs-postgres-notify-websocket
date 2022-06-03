@@ -1,12 +1,19 @@
+  -- socket-io stuff
+  CREATE TABLE IF NOT EXISTS socket_io_attachments (
+      id          bigserial UNIQUE,
+      created_at  timestamptz DEFAULT NOW(),
+      payload     bytea
+  );
+  
 -- example table
-create or replace table reservations (
+create table reservations (
 id int primary key,
-value var(500));
+value Text);
+
 
 -- trigger function
 -- https://www.postgresql.org/docs/current/sql-notify.html
-create
-or replace function fn_reservation_inserted() returns trigger as $psql$
+create function fn_reservation_inserted() returns trigger as $psql$
 begin
   perform pg_notify(
     'reservation_insert_event',
