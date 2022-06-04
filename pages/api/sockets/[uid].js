@@ -1,10 +1,11 @@
 const ioHandler = async (req, res) => {
+  const { uid } = req.query
   // there is no socket
   if (!res.socket.server.io) {
     const io = global.socket
     io.on('connection', async (_socket) => {
-      console.log('connection started')
-      _socket.join('branch-id-here')
+      console.log('connection started', uid)
+      _socket.join(uid)
       _socket.on('disconnect', async () => {
         console.log('connection ended')
       })

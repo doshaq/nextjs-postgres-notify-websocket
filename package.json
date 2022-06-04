@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
     "build": "next build",
     "start": "cross-env NODE_ENV=production node server.js"
   },
   "dependencies": {
     "@socket.io/postgres-adapter": "^0.3.0",
+    "@socket.io/redis-adapter": "^7.2.0",
     "cross-env": "^7.0.3",
     "express": "^4.17.1",
+    "ioredis": "^5.0.6",
     "next": "10.2.3",
     "pg": "^8.7.3",
+    "prisma": "^3.14.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "react-use-websocket": "^2.7.1",
+    "redis": "^4.1.0",
     "socket.io": "^4.5.1",
     "socket.io-client": "^4.5.1",
     "ws": "^7.4.6"

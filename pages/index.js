@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { io } from "socket.io-client";
+import { io } from 'socket.io-client'
 export default function App() {
   const [previousMessageTime, setPreviousMessageTime] = useState('')
   const [listOfItems, setListOfItems] = useState([])
@@ -12,18 +12,17 @@ export default function App() {
   //   setListOfItems(message.data)
   // }
 
-
   useEffect(() => {
-    fetch('/api/socket').finally(() => {
+    fetch('/api/sockets/y').finally(() => {
       const socket = io()
 
       socket.on('connect', () => {
         console.log('connect')
-        socket.emit('hello')
       })
 
-      socket.on('reservations', data => {
+      socket.on('reservations', (data) => {
         console.log('reservations', data)
+        setListOfItems(JSON.parse(data))
       })
 
       socket.on('a user connected', () => {
@@ -35,7 +34,6 @@ export default function App() {
       })
     })
   }, []) // Added [] as useEffect filter so it will be executed only once, when component is mounted
-
 
   return (
     <div>
