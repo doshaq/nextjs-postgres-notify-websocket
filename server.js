@@ -3,8 +3,11 @@ const express = require('express')
 const next = require('next')
 const { Client } = require('pg')
 const { Server: ServerIO } = require('socket.io')
-const { createAdapter } = require('@socket.io/postgres-adapter')
-const { pubClient, subClient } = require('./lib/redis')
+const { Emitter } = require('@socket.io/redis-emitter')
+const { createAdapter } = require('@socket.io/redis-adapter')
+const { instrument } = require('@socket.io/admin-ui')
+const { createClient } = require('redis')
+
 // References:
 // - https://nextjs.org/docs/advanced-features/custom-server
 // - https://github.com/vercel/next.js/tree/canary/examples/custom-server-express
@@ -22,13 +25,28 @@ nextApp.prepare().then(async () => {
   const expressApp = express()
   // Node http server - added to for integrating WebSocket server
   const server = createServer(expressApp)
-
+  // redis client
+  const pubClient = createClient({ url: 'redis://localhost:6379' })
+  const subClient = pubClient.duplicate()
   // WebSocket server - for sending realtime updates to UI
-  const io = new ServerIO(server)
-  io.adapter(createAdapter(pubClient, subClient))
+  const io = new ServerIO(server, {
+    // hook the websocket to redis
+    adapter: createAdapter(pubClient, subClient),
+    cors: {
+      origin: ['https://admin.socket.io'],
+      credentials: true,
+    },
+  })
+  instrument(io, {
+    auth: false,
+  })
   // set a global websocket variable so we can use it in the socket.io handler
   global.socket = io
-
+  // db client
+  global.db = client
+  // redis event emitter , used to emit events to scale
+  const emitter = new Emitter(pubClient)
+  
   client.connect(function (err, _client) {
     // fires up the listener.
     _client.query('LISTEN reservation_insert_event')
@@ -36,7 +54,11 @@ nextApp.prepare().then(async () => {
     _client.on('notification', (event) => {
       // query all reservations on every insert (bad logic, but works for now).
       _client.query('SELECT * FROM reservations').then((data) => {
-        io.to('y').emit('reservations', JSON.stringify(data.rows))
+        console.log('event', io)
+        // tell redis to emit an event to all connected websocket servers in the
+        // room y [future branch name],
+        // so it wont be repeated.
+        emitter.to('y').emit('reservations', JSON.stringify(data.rows))
       })
     })
   })

@@ -1,16 +1,8 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
-export default function App() {
+export default function App({ initialRows }) {
   const [previousMessageTime, setPreviousMessageTime] = useState('')
-  const [listOfItems, setListOfItems] = useState([])
-
-  // Check if we've received a new message based on the previous message's timestamp,
-  // and update if needs be
-  // if (message && previousMessageTime !== message.time) {
-  //   setPreviousMessageTime(message.time)
-  //   console.log(message)
-  //   setListOfItems(message.data)
-  // }
+  const [listOfItems, setListOfItems] = useState([...initialRows])
 
   useEffect(() => {
     fetch('/api/sockets/y').finally(() => {
@@ -46,4 +38,12 @@ export default function App() {
       </ul>
     </div>
   )
+}
+export async function getServerSideProps(context) {
+  const data = await global.db.query('SELECT * FROM reservations')
+  return {
+    props: {
+      initialRows: data.rows,
+    }, // will be passed to the page component as props
+  }
 }
