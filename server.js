@@ -6,7 +6,7 @@ const { Server: ServerIO } = require('socket.io')
 const { Emitter } = require('@socket.io/redis-emitter')
 const { createAdapter } = require('@socket.io/redis-adapter')
 const { instrument } = require('@socket.io/admin-ui')
-const { createClient } = require('redis')
+const { createClient: createRedisClient } = require('redis')
 
 // References:
 // - https://nextjs.org/docs/advanced-features/custom-server
@@ -25,9 +25,12 @@ nextApp.prepare().then(async () => {
   const expressApp = express()
   // Node http server - added to for integrating WebSocket server
   const server = createServer(expressApp)
-  // redis client
-  const pubClient = createClient({ url: 'redis://localhost:6379' })
+  // redis client for websocket adapter
+  const pubClient = createRedisClient({ url: 'redis://localhost:6379' })
   const subClient = pubClient.duplicate()
+  // redis client for event listening
+  const eventsClient = pubClient.duplicate()
+
   // WebSocket server - for sending realtime updates to UI
   const io = new ServerIO(server, {
     // hook the websocket to redis
@@ -46,22 +49,11 @@ nextApp.prepare().then(async () => {
   global.db = client
   // redis event emitter , used to emit events to scale
   const emitter = new Emitter(pubClient)
-  
-  client.connect(function (err, _client) {
-    // fires up the listener.
-    _client.query('LISTEN reservation_insert_event')
-    // in case of notification, run a function.
-    _client.on('notification', (event) => {
-      // query all reservations on every insert (bad logic, but works for now).
-      _client.query('SELECT * FROM reservations').then((data) => {
-        console.log('event', io)
-        // tell redis to emit an event to all connected websocket servers in the
-        // room y [future branch name],
-        // so it wont be repeated.
-        emitter.to('y').emit('reservations', JSON.stringify(data.rows))
-      })
-    })
-  })
+  eventsClient.subscribe('reservations')
+  eventsClient.on('message', (channel, message) =>
+    emitter.to('y').emit('reservations', JSON.stringify([]))
+  )
+  await client.connect()
 
   // To handle Next.js routing
   expressApp.all('*', (req, res) => {
